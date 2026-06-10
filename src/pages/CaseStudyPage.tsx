@@ -1,22 +1,10 @@
 import type { ReactNode } from 'react';
-import { Table, Tag, Avatar, Button, Steps, Badge, Checkbox } from 'antd';
+import { ConfigProvider, Table, Tag, Button, Steps, Checkbox, Input, Avatar } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
-  DashboardOutlined,
-  TeamOutlined,
-  FileSearchOutlined,
-  SolutionOutlined,
-  BulbOutlined,
-  BarChartOutlined,
-  SettingOutlined,
   ThunderboltOutlined,
-  BellOutlined,
-  SearchOutlined,
-  ExclamationCircleFilled,
   CheckCircleFilled,
   RiseOutlined,
-  ArrowLeftOutlined,
-  EyeOutlined,
   ReadOutlined,
   ExportOutlined,
   ClockCircleOutlined,
@@ -25,50 +13,61 @@ import {
   CheckCircleOutlined,
   FlagOutlined,
   SoundOutlined,
+  SolutionOutlined,
+  SearchOutlined,
+  CloseOutlined,
+  WarningFilled,
 } from '@ant-design/icons';
-import { TrendChart } from '../components/TrendChart';
-import { InsightCard } from '../components/InsightCard';
-import { KpiStrip } from '../components/KpiStrip';
-import { AgentTable } from '../components/AgentTable';
+import { Sidebar } from '../components/Sidebar';
+import { HeaderBar } from '../components/HeaderBar';
+import type { PageKey } from '../components/Sidebar';
 import { DashboardScreen } from './DashboardScreen';
 import { AgentDrilldown } from './AgentDrilldown';
+import { CoachingPage } from './CoachingPage';
 import {
-  VO_INSIGHTS,
-  VO_KPIS,
-  VO_TEAM_TREND,
-  VO_ROHAN,
   VO_EVIDENCE,
   VO_COACHING,
   VO_ASSISTANT,
-  scoreColor,
-  scoreTextColor,
 } from '../data/mockData';
 import type { AssistantRow } from '../data/mockData';
 
-// ─── Shared helpers ──────────────────────────────────────────────────────────
+// ─── Theme & Layout Shell ────────────────────────────────────────────────────
 
-function Bar({ value, height = 8 }: { value: number; height?: number }) {
+const THEME = {
+  token: {
+    borderRadius: 8,
+    colorBorderSecondary: '#f0f0f0',
+    fontFamily:
+      "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+  },
+};
+
+/**
+ * Uses the exact same Sidebar + HeaderBar as App.tsx, but without
+ * height:100vh / overflow:hidden so all content is visible in the scrollable case study.
+ */
+function RealLayout({ page = 'overview', children }: { page?: PageKey; children: ReactNode }) {
   return (
-    <div
-      style={{
-        flex: 1,
-        height,
-        background: 'rgba(0,0,0,0.06)',
-        borderRadius: 100,
-        overflow: 'hidden',
-      }}
-    >
-      <div
-        style={{
-          width: `${value}%`,
-          height: '100%',
-          background: scoreColor(value),
-          borderRadius: 100,
-        }}
-      />
-    </div>
+    <ConfigProvider theme={THEME}>
+      <div style={{ display: 'flex', background: '#f5f7fa' }}>
+        <Sidebar collapsed={false} page={page} onNav={() => {}} />
+        <div className="pro-main">
+          <HeaderBar
+            collapsed={false}
+            onToggle={() => {}}
+            onOpenAssistant={() => {}}
+            page={page}
+          />
+          <div className="pro-content" style={{ overflow: 'visible', minHeight: 900 }}>
+            {children}
+          </div>
+        </div>
+      </div>
+    </ConfigProvider>
   );
 }
+
+// ─── Case-study section wrapper ──────────────────────────────────────────────
 
 function CsSection({
   num,
@@ -84,7 +83,7 @@ function CsSection({
   return (
     <section
       style={{
-        maxWidth: 1440,
+        maxWidth: 1920,
         margin: '0 auto',
         padding: '72px 48px',
         borderBottom: '1px solid #e2e5ea',
@@ -137,6 +136,7 @@ function CsSection({
   );
 }
 
+/** Browser-chrome frame that wraps each screen mockup */
 function ScreenFrame({
   label,
   url = 'voiceops-ai-ten.vercel.app',
@@ -151,8 +151,7 @@ function ScreenFrame({
       style={{
         borderRadius: 14,
         border: '1px solid #d0d5dd',
-        boxShadow:
-          '0 8px 32px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06)',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.10)',
         overflow: 'hidden',
         background: '#fff',
       }}
@@ -212,203 +211,81 @@ function ScreenFrame({
   );
 }
 
-// ─── Static app shell ────────────────────────────────────────────────────────
-
-const SIDE_MENU = [
-  {
-    group: 'MONITOR',
-    items: [
-      { key: 'overview', icon: <DashboardOutlined />, label: 'Overview' },
-      { key: 'agents', icon: <TeamOutlined />, label: 'Agents' },
-    ],
-  },
-  {
-    group: 'QUALITY',
-    items: [
-      { key: 'audits', icon: <FileSearchOutlined />, label: 'Audits' },
-      { key: 'coaching', icon: <SolutionOutlined />, label: 'Coaching' },
-    ],
-  },
-  {
-    group: 'ANALYZE',
-    items: [
-      { key: 'insights', icon: <BulbOutlined />, label: 'Insights' },
-      { key: 'reports', icon: <BarChartOutlined />, label: 'Reports' },
-    ],
-  },
-];
-
-function StaticSidebar({ active = 'overview' }: { active?: string }) {
+/** Matches the small × close button inside antd Drawer / Modal headers */
+function CloseBtn() {
   return (
-    <div
+    <button
       style={{
-        width: 220,
-        background: '#fff',
-        borderRight: '1px solid #f0f0f0',
-        display: 'flex',
-        flexDirection: 'column',
-        flexShrink: 0,
-      }}
-    >
-      <div
-        style={{
-          padding: '16px 24px',
-          borderBottom: '1px solid #f0f0f0',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-        }}
-      >
-        <ThunderboltOutlined style={{ color: '#1677ff', fontSize: 18 }} />
-        <span style={{ fontWeight: 700, fontSize: 15, letterSpacing: '-0.2px' }}>
-          VoiceOps AI
-        </span>
-      </div>
-      <div style={{ flex: 1, padding: '12px 0' }}>
-        {SIDE_MENU.map((grp) => (
-          <div key={grp.group}>
-            <div
-              style={{
-                padding: '10px 24px 4px',
-                fontSize: 11,
-                fontWeight: 600,
-                color: 'rgba(0,0,0,0.35)',
-                letterSpacing: '0.1em',
-                textTransform: 'uppercase',
-              }}
-            >
-              {grp.group}
-            </div>
-            {grp.items.map((item) => {
-              const on = active === item.key;
-              return (
-                <div
-                  key={item.key}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    padding: '8px 16px',
-                    margin: '1px 8px',
-                    borderRadius: 8,
-                    fontSize: 14,
-                    fontWeight: on ? 600 : 400,
-                    background: on ? '#e6f4ff' : 'transparent',
-                    color: on ? '#1677ff' : 'rgba(0,0,0,0.65)',
-                  }}
-                >
-                  {item.icon}
-                  <span>{item.label}</span>
-                </div>
-              );
-            })}
-          </div>
-        ))}
-        <div style={{ margin: '8px 16px', borderTop: '1px solid #f0f0f0' }} />
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            padding: '8px 16px',
-            margin: '1px 8px',
-            borderRadius: 8,
-            fontSize: 14,
-            color: 'rgba(0,0,0,0.65)',
-          }}
-        >
-          <SettingOutlined />
-          <span>Settings</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function StaticHeader({ crumb = 'Overview' }: { crumb?: string }) {
-  return (
-    <div
-      style={{
-        height: 56,
-        background: '#fff',
-        borderBottom: '1px solid #f0f0f0',
+        width: 22,
+        height: 22,
         display: 'flex',
         alignItems: 'center',
-        padding: '0 24px',
-        gap: 16,
+        justifyContent: 'center',
+        border: 0,
+        background: 'none',
+        cursor: 'default',
+        color: 'rgba(0,0,0,0.45)',
+        fontSize: 12,
+        borderRadius: 4,
         flexShrink: 0,
+        padding: 0,
       }}
     >
-      <div
-        style={{
-          fontSize: 13,
-          color: 'rgba(0,0,0,0.45)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-        }}
-      >
-        <ThunderboltOutlined style={{ color: '#1677ff', fontSize: 12 }} />
-        <span>VoiceOps AI</span>
-        <span style={{ color: 'rgba(0,0,0,0.2)' }}>/</span>
-        <span style={{ color: 'rgba(0,0,0,0.75)', fontWeight: 500 }}>{crumb}</span>
-      </div>
-      <div style={{ flex: 1 }} />
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          background:
-            'linear-gradient(#fff,#fff) padding-box,linear-gradient(90deg,#1677ff,#7c3aed) border-box',
-          border: '1.5px solid transparent',
-          borderRadius: 8,
-          padding: '5px 12px',
-          width: 300,
-        }}
-      >
-        <SearchOutlined style={{ color: 'rgba(0,0,0,0.3)', fontSize: 13 }} />
-        <span style={{ fontSize: 13, color: 'rgba(0,0,0,0.3)', flex: 1 }}>
-          Ask VoiceOps AI anything…
-        </span>
-        <span
-          style={{
-            fontSize: 11,
-            color: 'rgba(0,0,0,0.2)',
-            background: '#f5f5f5',
-            border: '1px solid #e8e8e8',
-            borderRadius: 4,
-            padding: '1px 6px',
-          }}
-        >
-          ⌘K
-        </span>
-      </div>
-      <div style={{ flex: 1 }} />
-      <Badge count={3} size="small">
-        <BellOutlined style={{ fontSize: 18, color: 'rgba(0,0,0,0.65)' }} />
-      </Badge>
-      <Avatar size={32} style={{ background: '#13c2c2' }}>SK</Avatar>
-    </div>
+      <CloseOutlined />
+    </button>
   );
 }
 
-function StaticLayout({
-  children,
-  active = 'overview',
-  crumb = 'Overview',
-}: {
-  children: ReactNode;
-  active?: string;
-  crumb?: string;
-}) {
+/** Callout cards rendered below each screen explaining key design decisions */
+function ScreenAnnotations({ items }: { items: { label: string; text: string }[] }) {
   return (
-    <div style={{ display: 'flex', background: '#f5f7fa' }}>
-      <StaticSidebar active={active} />
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        <StaticHeader crumb={crumb} />
-        <div style={{ flex: 1 }}>{children}</div>
-      </div>
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+        gap: 12,
+        marginTop: 20,
+      }}
+    >
+      {items.map((item, i) => (
+        <div
+          key={i}
+          style={{
+            background: '#fff',
+            border: '1px solid #e2e5ea',
+            borderRadius: 10,
+            padding: '14px 18px',
+            display: 'flex',
+            gap: 12,
+            alignItems: 'flex-start',
+          }}
+        >
+          <span
+            style={{
+              width: 22,
+              height: 22,
+              borderRadius: '50%',
+              background: '#e6f4ff',
+              color: '#1677ff',
+              fontSize: 11,
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              marginTop: 1,
+            }}
+          >
+            {i + 1}
+          </span>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#111827', marginBottom: 3 }}>
+              {item.label}
+            </div>
+            <div style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.55 }}>{item.text}</div>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -419,11 +296,10 @@ function Cover() {
   const META = [
     { label: 'Role', value: 'Product Designer' },
     { label: 'Domain', value: 'Contact Center / B2B SaaS' },
-    { label: 'Design System', value: 'Ant Design' },
+    { label: 'Design System', value: 'Ant Design v5' },
     { label: 'Focus', value: 'AI Insights · Explainable AI · Agentic Coaching' },
     { label: 'Deliverable', value: 'High-fidelity prototype' },
   ];
-
   const CARDS = [
     {
       label: 'Project Overview',
@@ -457,7 +333,7 @@ function Cover() {
           backgroundSize: '40px 40px',
         }}
       />
-      <div style={{ maxWidth: 1440, margin: '0 auto', position: 'relative' }}>
+      <div style={{ maxWidth: 1920, margin: '0 auto', position: 'relative' }}>
         <div
           style={{
             display: 'inline-flex',
@@ -475,7 +351,6 @@ function Cover() {
             Product Design Case Study
           </span>
         </div>
-
         <h1
           style={{
             fontSize: 56,
@@ -487,8 +362,7 @@ function Cover() {
             maxWidth: 920,
           }}
         >
-          VoiceOps AI —
-          <br />
+          VoiceOps AI —<br />
           <span style={{ color: '#4096ff' }}>AI-Powered Supervisor Dashboard</span>
         </h1>
         <p
@@ -503,7 +377,6 @@ function Cover() {
           A contact center supervisor dashboard that turns raw performance data into
           explainable insights and AI-assisted coaching actions.
         </p>
-
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 56 }}>
           {META.map((m) => (
             <div
@@ -531,7 +404,6 @@ function Cover() {
             </div>
           ))}
         </div>
-
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 20 }}>
           {CARDS.map((c) => (
             <div
@@ -573,258 +445,205 @@ function Cover() {
   );
 }
 
-// ─── Section 1: Main Dashboard ───────────────────────────────────────────────
+// ─── Section 1 — Supervisor Dashboard main screen ────────────────────────────
 
 function Sec1Dashboard() {
   return (
     <CsSection
       num="1"
-      title="Supervisor Dashboard Main Screen"
-      annotation="This screen gives supervisors a fast at-a-glance view of team health, urgent AI-ranked interventions, KPIs, trends, and individual agent performance."
+      title="Supervisor Dashboard — Main Screen"
+      annotation="Gives supervisors a fast at-a-glance view of team health, urgent AI-ranked interventions, KPIs, trends, and individual agent performance."
     >
-      <ScreenFrame label="Main Dashboard State">
-        <StaticLayout active="overview" crumb="Overview">
+      <ScreenFrame label="Main Dashboard">
+        <RealLayout page="overview">
           <DashboardScreen onOpenAgent={() => {}} onAction={() => {}} />
-        </StaticLayout>
+        </RealLayout>
       </ScreenFrame>
+      <ScreenAnnotations
+        items={[
+          {
+            label: 'AI-ranked interventions at the top',
+            text: "Priority Interventions are placed above every other section — the most urgent action is the first thing a supervisor sees, not buried under raw metrics.",
+          },
+          {
+            label: 'KPI strip — 7 metrics in one row',
+            text: 'CSAT, AHT, FCR, audit pass rate, escalation rate, hold time, and interactions are shown in a single scannable strip with trend arrows so the supervisor never has to visit a separate report page.',
+          },
+          {
+            label: 'Team performance trend chart',
+            text: 'CSAT, Audit Score, and FCR are plotted together over 7 days. Showing all three on one chart makes it easy to spot when they diverge — e.g. audit score rising while CSAT falls.',
+          },
+          {
+            label: 'Agent table with inline score bars',
+            text: 'Each agent row has a score bar, weakest parameter, status tag, and an AI-recommended action. Supervisors can triage the whole team without drilling into individual profiles.',
+          },
+        ]}
+      />
     </CsSection>
   );
 }
 
-// ─── Section 2: AI Insights Focus ───────────────────────────────────────────
-
-function Sec2Insights() {
-  return (
-    <CsSection
-      num="2"
-      title="High-Signal AI Insights"
-      annotation="Instead of showing only raw metrics, the AI layer surfaces the top interventions that require supervisor attention today."
-    >
-      <div
-        style={{
-          background: '#fff',
-          borderRadius: 12,
-          border: '1px solid #e2e5ea',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
-          padding: '28px 32px 32px',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: 24,
-          }}
-        >
-          <div>
-            <h3
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                fontSize: 18,
-                fontWeight: 700,
-                margin: '0 0 6px',
-              }}
-            >
-              <ThunderboltOutlined style={{ color: '#1d39c4' }} />
-              Today's priority interventions
-            </h3>
-            <div style={{ fontSize: 13, color: 'rgba(0,0,0,0.45)' }}>
-              AI-ranked actions based on performance, audit risk, and customer impact.
-            </div>
-          </div>
-          <Button type="link">View all 7 insights</Button>
-        </div>
-        <div className="vo-insight-grid">
-          {VO_INSIGHTS.map((ins) => (
-            <InsightCard key={ins.id} ins={ins} onAction={() => {}} />
-          ))}
-        </div>
-      </div>
-    </CsSection>
-  );
-}
-
-// ─── Section 3: Agent Drilldown ──────────────────────────────────────────────
+// ─── Section 2 — Agent Performance Drilldown ────────────────────────────────
 
 function Sec3Drilldown() {
   return (
     <CsSection
-      num="3"
-      title="Agent Performance Drilldown Screen"
-      annotation="This screen helps supervisors understand one agent's performance in depth, including strengths, weak audit parameters, trends, and recent audited calls."
+      num="2"
+      title="Agent Performance Drilldown"
+      annotation="Supervisors can drill into one agent's performance in depth — strengths, weak audit parameters, CSAT trends, and every audited call."
     >
-      <ScreenFrame label="Agent Drilldown State">
-        <StaticLayout active="agents" crumb="Rohan Mehta">
+      <ScreenFrame label="Agent Drilldown — Rohan Mehta">
+        <RealLayout page="agent">
           <AgentDrilldown
             onBack={() => {}}
             backLabel="Back to Dashboard"
             onEvidence={() => {}}
             onCoaching={() => {}}
           />
-        </StaticLayout>
+        </RealLayout>
       </ScreenFrame>
+      <ScreenAnnotations
+        items={[
+          {
+            label: 'Agent header with risk tag and immediate action',
+            text: 'Name, role, team, risk tag ("High risk"), and the coaching CTA are all on one row — the supervisor has full context before reading any metric.',
+          },
+          {
+            label: 'Score bars on KPI cells',
+            text: 'Percentage metrics like Overall QA Score and CSAT include an inline score bar so low values are visible at a glance without needing to read the number.',
+          },
+          {
+            label: 'AI-generated performance summary',
+            text: 'The summary is auto-generated from the last 18 audited calls — it explains the pattern in plain language so supervisors understand the root cause, not just the score.',
+          },
+          {
+            label: 'Strengths vs. Weaknesses side-by-side',
+            text: 'Placing strengths and weaknesses in adjacent cards makes the contrast visible immediately — supervisor can identify peer coaching opportunities as easily as risks.',
+          },
+          {
+            label: 'Audit breakdown + trend chart',
+            text: 'The parameter breakdown shows every QA dimension, and the trend chart alongside it reveals whether scores are recovering or continuing to decline — critical for timing the coaching intervention.',
+          },
+          {
+            label: 'Recent audited calls table',
+            text: 'Shows call IDs, customer sentiment, audit score, and failed parameters for the last 3 calls with a "View evidence" link — so supervisors can go from trend to specific call in one click.',
+          },
+        ]}
+      />
     </CsSection>
   );
 }
 
-// ─── Section 4: Evidence Drawer (static inline) ──────────────────────────────
+// ─── Section 3 — Evidence Drawer ─────────────────────────────────────────────
 
 function Sec4Evidence() {
   const E = VO_EVIDENCE;
-  const R = VO_ROHAN;
 
   return (
     <CsSection
-      num="4"
+      num="3"
       title="Explainable AI Evidence"
-      annotation="For any low audit score, the supervisor can inspect why the AI flagged the issue using highlighted transcript snippets and policy-based reasoning."
+      annotation="For any low audit score the supervisor can inspect WHY the AI flagged the issue — highlighted transcript snippets, policy violations, and AI confidence."
     >
-      <ScreenFrame label="Evidence Drawer State">
-        <StaticLayout active="agents" crumb="Rohan Mehta · Evidence">
-          <div style={{ display: 'flex', minHeight: 720 }}>
-            {/* Left: drilldown context (dimmed) */}
-            <div
-              style={{
-                flex: 1,
-                opacity: 0.32,
-                padding: '24px',
-                overflow: 'hidden',
-                minWidth: 0,
-              }}
-            >
-              <div
-                className="pro-page-header"
-                style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}
-              >
-                <Button icon={<ArrowLeftOutlined />} size="small">
-                  Back to Dashboard
-                </Button>
-                <Avatar size={36} style={{ background: '#cf1322' }}>RM</Avatar>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 15 }}>{R.name}</div>
-                  <div style={{ fontSize: 12, color: 'rgba(0,0,0,0.45)' }}>{R.role}</div>
-                </div>
-                <Tag color="red">
-                  <ExclamationCircleFilled /> High risk
-                </Tag>
-                <div style={{ marginLeft: 'auto' }}>
-                  <Button type="primary" size="small">
-                    Create coaching plan
-                  </Button>
-                </div>
-              </div>
-              <div style={{ padding: '16px 0' }}>
-                <div
-                  className="vo-kpi-strip"
-                  style={{ gridTemplateColumns: 'repeat(4,1fr)', marginBottom: 16 }}
-                >
-                  {R.summary.slice(0, 4).map((s) => (
-                    <div className="vo-kpi-cell" key={s.title}>
-                      <div className="stat-title">{s.title}</div>
-                      <div
-                        className="stat-value"
-                        style={{ color: s.tone === 'bad' ? '#cf1322' : undefined }}
-                      >
-                        {s.value}
-                        <span className="stat-suffix">{s.suffix}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div
-                  style={{
-                    background: '#fff',
-                    borderRadius: 10,
-                    borderLeft: '3px solid #2f54eb',
-                    padding: '14px 18px',
-                    boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
-                    marginBottom: 16,
-                  }}
-                >
-                  <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>
-                    AI performance summary
-                  </div>
-                  <p
-                    style={{
-                      fontSize: 13,
-                      color: 'rgba(0,0,0,0.6)',
-                      margin: 0,
-                      lineHeight: 1.6,
-                    }}
-                  >
-                    {R.aiSummary.slice(0, 180)}…
-                  </p>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                  {R.weaknesses.slice(0, 4).map((w) => (
-                    <div className="vo-param-row" key={w.name} style={{ gridTemplateColumns: '1fr 80px 36px' }}>
-                      <span className="vo-param-name">{w.name}</span>
-                      <Bar value={w.value} height={6} />
-                      <span className="vo-param-val" style={{ color: scoreTextColor(w.value) }}>
-                        {w.value}%
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+      <ScreenFrame label="Evidence Drawer — Open">
+        <RealLayout page="agent">
+          <div style={{ position: 'relative', minHeight: 900, overflow: 'hidden' }}>
+
+            {/* Background: real AgentDrilldown — dimmed like antd Drawer mask shows it */}
+            <div style={{ opacity: 0.25, pointerEvents: 'none' }}>
+              <AgentDrilldown
+                onBack={() => {}}
+                backLabel="Back to Dashboard"
+                onEvidence={() => {}}
+                onCoaching={() => {}}
+              />
             </div>
 
-            {/* Right: Evidence panel */}
+            {/* antd Drawer default mask */}
             <div
               style={{
-                width: 524,
+                position: 'absolute',
+                inset: 0,
+                background: 'rgba(0,0,0,0.45)',
+                zIndex: 1,
+              }}
+            />
+
+            {/* ── Drawer panel — antd Drawer right placement, width=560 ── */}
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                right: 0,
+                bottom: 0,
+                width: 560,
                 background: '#fff',
-                borderLeft: '1px solid #e8e8e8',
+                zIndex: 2,
+                boxShadow:
+                  '-6px 0 16px -8px rgba(0,0,0,.08),-9px 0 28px 0 rgba(0,0,0,.05),-12px 0 48px 16px rgba(0,0,0,.03)',
                 display: 'flex',
                 flexDirection: 'column',
-                flexShrink: 0,
               }}
             >
-              {/* Panel header */}
+              {/* antd Drawer header */}
               <div
                 style={{
-                  padding: '18px 24px 14px',
-                  borderBottom: '1px solid #f0f0f0',
-                  background: '#fafafa',
+                  padding: '16px 24px',
+                  borderBottom: '1px solid rgba(5,5,5,.06)',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 8,
                 }}
               >
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    marginBottom: 6,
-                  }}
-                >
-                  <span className="vo-ai-chip">
-                    <ThunderboltOutlined /> Explainable AI
-                  </span>
-                  <span style={{ fontSize: 12, color: 'rgba(0,0,0,0.45)' }}>
-                    {E.call} · Rohan Mehta
-                  </span>
+                <div style={{ flex: 1 }}>
+                  {/* Same content as EvidenceDrawer title prop */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      marginBottom: 6,
+                    }}
+                  >
+                    <span className="vo-ai-chip">
+                      <ThunderboltOutlined /> Explainable AI
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 400,
+                        color: 'var(--ad-color-text-secondary)',
+                      }}
+                    >
+                      {E.call} · Rohan Mehta
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.4 }}>
+                    {E.question}
+                  </div>
                 </div>
-                <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.4, marginBottom: 12 }}>
-                  {E.question}
-                </div>
+                <CloseBtn />
+              </div>
+
+              {/* antd Drawer body — exact same as EvidenceDrawer body */}
+              <div style={{ flex: 1, padding: '24px', overflowY: 'auto' }}>
                 {/* Score banner */}
                 <div
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    padding: '10px 14px',
+                    padding: '14px 16px',
                     border: '1px solid #ffccc7',
                     background: '#fff1f0',
                     borderRadius: 8,
+                    marginBottom: 20,
                   }}
                 >
-                  <span style={{ fontSize: 13, fontWeight: 600 }}>{E.parameter}</span>
+                  <span style={{ fontSize: 14, fontWeight: 600 }}>{E.parameter}</span>
                   <span
                     style={{
-                      fontSize: 18,
+                      fontSize: 20,
                       fontWeight: 700,
                       color: '#cf1322',
                       fontFeatureSettings: '"tnum"',
@@ -833,35 +652,25 @@ function Sec4Evidence() {
                     {E.score}
                   </span>
                 </div>
-              </div>
 
-              {/* Body */}
-              <div style={{ flex: 1, padding: '20px 24px', overflowY: 'auto' }}>
-                <div
-                  style={{
-                    fontSize: 13,
-                    fontWeight: 600,
-                    marginBottom: 12,
-                    color: 'rgba(0,0,0,0.55)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.06em',
-                  }}
-                >
+                {/* Transcript snippets */}
+                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>
                   Flagged transcript moments
                 </div>
-
                 {E.snippets.map((s, i) => (
                   <div className="vo-snippet" key={i}>
                     <div className="vo-snippet-meta">
                       <SoundOutlined />
                       {E.call} · {s.time}
+                      <span style={{ marginLeft: 'auto' }}>
+                        <Button type="link" size="small">
+                          Play audio
+                        </Button>
+                      </span>
                     </div>
                     <div className="vo-snippet-lines">
                       {s.lines.map((l, j) => (
-                        <div
-                          className={`vo-line${l.highlight ? ' hl' : ''}`}
-                          key={j}
-                        >
+                        <div className={`vo-line${l.highlight ? ' hl' : ''}`} key={j}>
                           <span className="who">{l.who}:</span>
                           <span className="txt">"{l.text}"</span>
                         </div>
@@ -876,28 +685,13 @@ function Sec4Evidence() {
                   </div>
                 ))}
 
-                <div
-                  style={{
-                    fontSize: 13,
-                    fontWeight: 600,
-                    margin: '20px 0 8px',
-                    color: 'rgba(0,0,0,0.55)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.06em',
-                  }}
-                >
-                  AI Reasoning
+                {/* AI Reasoning — same as EvidenceDrawer */}
+                <div style={{ fontSize: 14, fontWeight: 600, margin: '20px 0 4px' }}>
+                  AI reasoning
                 </div>
-                <div
-                  style={{
-                    border: '1px solid #f0f0f0',
-                    borderRadius: 10,
-                    overflow: 'hidden',
-                    marginBottom: 16,
-                  }}
-                >
+                <div>
                   {E.reasoning.map((r) => (
-                    <div className="vo-reason-row" key={r.label} style={{ padding: '10px 16px' }}>
+                    <div className="vo-reason-row" key={r.label}>
                       <span className="vo-reason-label">{r.label}</span>
                       <span className="vo-reason-text">
                         {r.label === 'AI confidence' ? <b>{r.text}</b> : r.text}
@@ -907,256 +701,350 @@ function Sec4Evidence() {
                 </div>
               </div>
 
-              {/* Footer */}
+              {/* antd Drawer footer — same buttons as EvidenceDrawer */}
               <div
                 style={{
-                  padding: '14px 24px',
-                  borderTop: '1px solid #f0f0f0',
+                  padding: '8px 24px',
+                  borderTop: '1px solid rgba(5,5,5,.06)',
                   display: 'flex',
-                  flexWrap: 'wrap',
                   gap: 8,
-                  background: '#fafafa',
+                  flexWrap: 'wrap',
                 }}
               >
-                <Button type="primary" size="small" icon={<CheckCircleOutlined />}>
+                <Button type="primary" icon={<CheckCircleOutlined />}>
                   Accept AI finding
                 </Button>
-                <Button size="small">Mark as incorrect</Button>
-                <Button size="small">Send to QA review</Button>
-                <Button size="small" icon={<SolutionOutlined />}>
-                  Create coaching plan
-                </Button>
+                <Button>Mark as incorrect</Button>
+                <Button>Send to QA review</Button>
+                <Button icon={<SolutionOutlined />}>Create coaching plan</Button>
               </div>
             </div>
           </div>
-        </StaticLayout>
+        </RealLayout>
       </ScreenFrame>
+      <ScreenAnnotations
+        items={[
+          {
+            label: 'Drawer slides in — drilldown stays visible',
+            text: 'The underlying agent drilldown remains partially visible through the dim mask, so supervisors never lose their place. They can dismiss and return to the exact same view.',
+          },
+          {
+            label: 'Score banner anchors the context',
+            text: '"Compliance & process adherence — 2/5" is the first thing visible when the drawer opens. The supervisor immediately knows what is being explained before reading any transcript.',
+          },
+          {
+            label: 'Highlighted transcript lines',
+            text: 'The specific agent lines that triggered the AI flag are underlined in red. Supervisors see the exact words, not a summary — making the evidence concrete and challengeable.',
+          },
+          {
+            label: 'AI reasoning table makes the model auditable',
+            text: 'Required policy, detected issue, customer impact, compliance risk, and AI confidence are shown in a structured table — supervisors can agree or disagree with each row, not just the final score.',
+          },
+          {
+            label: 'Four resolution paths in the footer',
+            text: 'Accept finding, mark as incorrect, send to QA, or create a coaching plan — the supervisor controls what happens next. The AI recommends; the human decides.',
+          },
+        ]}
+      />
     </CsSection>
   );
 }
 
-// ─── Section 5: Coaching Modal (static) ─────────────────────────────────────
+// ─── Section 4 — Coaching Approval Modal (All 3 Steps) ───────────────────────
+// Shows all 3 steps of CoachingModal.tsx side by side
+
+const MODAL_SHADOW =
+  '0 6px 16px 0 rgba(0,0,0,.08),0 3px 6px -4px rgba(0,0,0,.12),0 9px 28px 8px rgba(0,0,0,.05)';
+
+const STEPPER_ITEMS = [
+  { title: 'Pattern detected' },
+  { title: 'Recommended training' },
+  { title: 'Automation approval' },
+];
+
+/** Shared modal chrome (header + flex column wrapper) */
+function ModalShell({
+  stepLabel,
+  stepIndex,
+  children,
+  footer,
+}: {
+  stepLabel: string;
+  stepIndex: number;
+  children: ReactNode;
+  footer: ReactNode;
+}) {
+  return (
+    <div>
+      {/* Step badge above the modal */}
+      <div
+        style={{
+          fontSize: 11,
+          fontWeight: 700,
+          color: '#1677ff',
+          letterSpacing: '0.1em',
+          textTransform: 'uppercase',
+          marginBottom: 14,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+        }}
+      >
+        <span
+          style={{
+            width: 22,
+            height: 22,
+            borderRadius: '50%',
+            background: '#1677ff',
+            color: '#fff',
+            fontSize: 12,
+            fontWeight: 700,
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}
+        >
+          {stepIndex + 1}
+        </span>
+        {stepLabel}
+      </div>
+
+      {/* Modal card */}
+      <div
+        style={{
+          background: '#fff',
+          borderRadius: 8,
+          boxShadow: MODAL_SHADOW,
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        {/* Header — identical across all steps */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            padding: '16px 24px',
+            borderBottom: '1px solid rgba(5,5,5,.06)',
+            gap: 8,
+          }}
+        >
+          <div style={{ flex: 1, fontSize: 16, fontWeight: 600 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+              AI-recommended coaching plan
+              <span className="vo-ai-chip">
+                <ThunderboltOutlined /> Rohan Mehta
+              </span>
+            </span>
+          </div>
+          <CloseBtn />
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: '16px 24px 0' }}>
+          <Steps
+            current={stepIndex}
+            size="small"
+            style={{ marginBottom: 24 }}
+            items={STEPPER_ITEMS}
+          />
+          {children}
+        </div>
+
+        {/* Footer */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: 8,
+            padding: '16px 24px',
+          }}
+        >
+          {footer}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function Sec5Coaching() {
   const C = VO_COACHING;
 
   return (
     <CsSection
-      num="5"
-      title="AI-Assisted Coaching Approval Flow"
-      annotation="The system converts audit patterns into a recommended coaching plan and lets the supervisor approve automated enrollment."
+      num="4"
+      title="AI-Assisted Coaching Approval — 3-Step Flow"
+      annotation="The coaching dialog walks the supervisor through three steps: detecting the performance pattern from audit data, reviewing the AI-recommended training module, and approving automated enrollment with follow-up actions."
     >
-      <ScreenFrame label="Coaching Approval State">
-        <StaticLayout active="coaching" crumb="Coaching">
-          <div style={{ position: 'relative', minHeight: 740 }}>
-            {/* Dim overlay */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 28 }}>
+
+        {/* ── Step 1: Pattern detected ── */}
+        <ModalShell
+          stepIndex={0}
+          stepLabel="Pattern Detected"
+          footer={
+            <>
+              <Button>Cancel</Button>
+              <Button type="primary">Next: recommended training</Button>
+            </>
+          }
+        >
+          <p style={{ fontSize: 14, lineHeight: 1.6, margin: '0 0 14px' }}>
+            {C.pattern}
+          </p>
+          <div
+            style={{
+              border: '1px solid #f0f0f0',
+              borderRadius: 8,
+              padding: '8px 16px',
+              marginBottom: 8,
+            }}
+          >
+            {C.evidence.map((e) => (
+              <div className="vo-evidence-li" key={e}>
+                <WarningFilled style={{ color: '#faad14', marginTop: 3 }} />
+                <span>{e}</span>
+              </div>
+            ))}
+          </div>
+        </ModalShell>
+
+        {/* ── Step 2: Recommended training ── */}
+        <ModalShell
+          stepIndex={1}
+          stepLabel="Recommended Training"
+          footer={
+            <>
+              <Button>Back</Button>
+              <Button>Edit plan</Button>
+              <Button type="primary">Next: approval</Button>
+            </>
+          }
+        >
+          <div className="vo-module">
+            <span className="vo-module-icon">
+              <ReadOutlined />
+            </span>
+            <span style={{ flex: 1 }}>
+              <div className="vo-module-name">{C.module.name}</div>
+              <div className="vo-module-meta">
+                <span>
+                  <ClockCircleOutlined /> {C.module.duration}
+                </span>
+                <span>
+                  <AimOutlined /> {C.module.format}
+                </span>
+              </div>
+            </span>
+          </div>
+          <div style={{ marginTop: 14, marginBottom: 8 }}>
             <div
               style={{
-                position: 'absolute',
-                inset: 0,
-                background: 'rgba(0,0,0,0.45)',
-                zIndex: 1,
-              }}
-            />
-            {/* Modal */}
-            <div
-              style={{
-                position: 'relative',
-                zIndex: 2,
-                display: 'flex',
-                justifyContent: 'center',
-                padding: '40px 24px',
+                fontSize: 13,
+                fontWeight: 600,
+                color: 'var(--ad-color-text-secondary)',
+                marginBottom: 4,
               }}
             >
-              <div
-                style={{
-                  width: 640,
-                  background: '#fff',
-                  borderRadius: 14,
-                  boxShadow: '0 20px 60px rgba(0,0,0,0.28)',
-                  overflow: 'hidden',
-                }}
-              >
-                {/* Modal header */}
-                <div
-                  style={{
-                    padding: '20px 24px 16px',
-                    borderBottom: '1px solid #f0f0f0',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 16, fontWeight: 700 }}>
-                      AI-Recommended Coaching Plan
-                    </span>
-                    <span className="vo-ai-chip">
-                      <ThunderboltOutlined /> Rohan Mehta
-                    </span>
-                  </div>
-                </div>
-
-                {/* Modal body */}
-                <div style={{ padding: '24px' }}>
-                  <Steps
-                    current={0}
-                    size="small"
-                    style={{ marginBottom: 24 }}
-                    items={[
-                      { title: 'Pattern detected' },
-                      { title: 'Recommended training' },
-                      { title: 'Automation approval' },
-                    ]}
-                  />
-
-                  {/* Step 1 content */}
-                  <p
-                    style={{
-                      fontSize: 14,
-                      lineHeight: 1.65,
-                      margin: '0 0 16px',
-                      color: 'rgba(0,0,0,0.85)',
-                    }}
-                  >
-                    {C.pattern}
-                  </p>
-                  <div
-                    style={{
-                      border: '1px solid #f0f0f0',
-                      borderRadius: 10,
-                      padding: '16px 20px',
-                      marginBottom: 16,
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: 12,
-                        fontWeight: 600,
-                        color: 'rgba(0,0,0,0.45)',
-                        marginBottom: 10,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.08em',
-                      }}
-                    >
-                      Evidence
-                    </div>
-                    {C.evidence.map((ev) => (
-                      <div
-                        key={ev}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 8,
-                          marginBottom: 6,
-                          fontSize: 14,
-                        }}
-                      >
-                        <ExclamationCircleFilled style={{ color: '#cf1322', fontSize: 13 }} />
-                        {ev}
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Module card (Step 2 preview) */}
-                  <div className="vo-module" style={{ marginBottom: 16 }}>
-                    <div className="vo-module-icon">
-                      <RiseOutlined />
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div className="vo-module-name">{C.module.name}</div>
-                      <div className="vo-module-meta">
-                        <span>
-                          <ClockCircleOutlined /> {C.module.duration}
-                        </span>
-                        <span>
-                          <AimOutlined /> {C.module.format}
-                        </span>
-                      </div>
-                      <p
-                        style={{
-                          fontSize: 13,
-                          color: 'rgba(0,0,0,0.65)',
-                          margin: '8px 0 0',
-                          lineHeight: 1.6,
-                        }}
-                      >
-                        {C.module.reason}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Step 3: Approval */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
-                    {[
-                      'Enroll agent automatically',
-                      'Schedule follow-up audit',
-                      'Notify agent',
-                      'Add manager note',
-                    ].map((opt) => (
-                      <div
-                        key={opt}
-                        style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}
-                      >
-                        <Checkbox checked />
-                        <span>{opt}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div
-                    style={{
-                      background: '#fafafa',
-                      border: '1px solid #e8e8e8',
-                      borderRadius: 8,
-                      padding: '10px 14px',
-                      fontSize: 13,
-                      color: 'rgba(0,0,0,0.65)',
-                      fontStyle: 'italic',
-                    }}
-                  >
-                    "{C.note}"
-                  </div>
-                </div>
-
-                {/* Footer */}
-                <div
-                  style={{
-                    padding: '16px 24px',
-                    borderTop: '1px solid #f0f0f0',
-                    display: 'flex',
-                    justifyContent: 'flex-end',
-                    gap: 8,
-                  }}
-                >
-                  <Button>Cancel</Button>
-                  <Button>Edit Plan</Button>
-                  <Button type="primary" icon={<CheckCircleOutlined />}>
-                    Approve Enrollment
-                  </Button>
-                </div>
-              </div>
+              Why this module
             </div>
+            <p style={{ fontSize: 14, lineHeight: 1.6, margin: 0 }}>{C.module.reason}</p>
           </div>
-        </StaticLayout>
-      </ScreenFrame>
+        </ModalShell>
+
+        {/* ── Step 3: Automation approval ── */}
+        <ModalShell
+          stepIndex={2}
+          stepLabel="Automation Approval"
+          footer={
+            <>
+              <Button>Back</Button>
+              <Button>Cancel</Button>
+              <Button type="primary" icon={<CheckCircleOutlined />}>
+                Approve enrollment
+              </Button>
+            </>
+          }
+        >
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 12,
+              marginBottom: 8,
+            }}
+          >
+            {[
+              'Enroll agent automatically',
+              'Schedule follow-up audit (Friday, Jun 12)',
+              'Notify agent',
+              'Add manager note',
+            ].map((label) => (
+              <Checkbox key={label} checked>
+                {label}
+              </Checkbox>
+            ))}
+          </div>
+          <div style={{ marginTop: 8, marginBottom: 8 }}>
+            <label
+              style={{
+                fontSize: 13,
+                color: 'var(--ad-color-text-secondary)',
+                display: 'block',
+                marginBottom: 6,
+              }}
+            >
+              Manager note (visible to Rohan)
+            </label>
+            <Input.TextArea rows={3} value={C.note} readOnly />
+          </div>
+        </ModalShell>
+
+      </div>
+      <ScreenAnnotations
+        items={[
+          {
+            label: 'Step 1 — Pattern before persuasion',
+            text: 'The supervisor sees exactly what AI detected — the pattern description and four concrete evidence bullets — before being asked to approve anything. Informed consent, not blind automation.',
+          },
+          {
+            label: 'Step 2 — AI-selected module with reasoning',
+            text: 'The recommended module shows duration, format, and a natural-language "Why this module" explanation tailored to this agent\'s specific failures — not a generic training catalogue.',
+          },
+          {
+            label: 'Step 3 — Granular automation control',
+            text: 'Each automated action (enrollment, follow-up audit, agent notification, manager note) is a separate checkbox. The supervisor controls exactly what fires — the AI recommends, the human approves.',
+          },
+          {
+            label: 'Stepper keeps the supervisor oriented',
+            text: 'The Steps component at the top of each modal state shows progress through the 3-step flow. Supervisors always know where they are and can navigate back to previous steps.',
+          },
+        ]}
+      />
     </CsSection>
   );
 }
 
-// ─── Section 6: Success State ────────────────────────────────────────────────
+// ─── Section 5 — Coaching Success State ──────────────────────────────────────
 
 function Sec6Success() {
   const C = VO_COACHING;
 
   return (
     <CsSection
-      num="6"
+      num="5"
       title="Closed-Loop Coaching Success State"
-      annotation="After approval, the system confirms that the agent has been enrolled and schedules a follow-up audit, closing the loop from insight to action."
+      annotation="After approval, the system confirms enrollment, schedules a follow-up audit, and notifies the agent — closing the loop from AI insight to human-approved action."
     >
-      <ScreenFrame label="Coaching Success State">
-        <StaticLayout active="coaching" crumb="Coaching · Confirmation">
-          <div style={{ position: 'relative', minHeight: 560 }}>
+      <ScreenFrame label="Coaching Modal — Success State">
+        <RealLayout page="coaching">
+          <div style={{ position: 'relative', minHeight: 900, overflow: 'hidden' }}>
+
+            <div style={{ opacity: 0.25, pointerEvents: 'none' }}>
+              <CoachingPage onCoaching={() => {}} />
+            </div>
+
             <div
               style={{
                 position: 'absolute',
@@ -1165,75 +1053,101 @@ function Sec6Success() {
                 zIndex: 1,
               }}
             />
+
+            {/* ── Modal step=3 ── */}
             <div
               style={{
-                position: 'relative',
+                position: 'absolute',
+                inset: 0,
                 zIndex: 2,
                 display: 'flex',
+                alignItems: 'center',
                 justifyContent: 'center',
-                padding: '72px 24px',
+                padding: 24,
               }}
             >
               <div
                 style={{
-                  width: 540,
+                  width: 640,
+                  maxWidth: '100%',
                   background: '#fff',
-                  borderRadius: 14,
-                  boxShadow: '0 20px 60px rgba(0,0,0,0.26)',
-                  padding: '48px 40px',
-                  textAlign: 'center',
+                  borderRadius: 8,
+                  boxShadow:
+                    '0 6px 16px 0 rgba(0,0,0,.08),0 3px 6px -4px rgba(0,0,0,.12),0 9px 28px 8px rgba(0,0,0,.05)',
                 }}
               >
-                <div className="vo-success">
-                  <CheckCircleFilled className="big-icon" />
-                  <h3>Coaching Plan Approved</h3>
-                  <p>{C.success}</p>
-                </div>
+                {/* Modal header */}
                 <div
                   style={{
-                    background: '#f6ffed',
-                    border: '1px solid #b7eb8f',
-                    borderRadius: 10,
-                    padding: '16px 20px',
-                    textAlign: 'left',
-                    margin: '24px 0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '16px 24px',
+                    borderBottom: '1px solid rgba(5,5,5,.06)',
+                    gap: 8,
                   }}
                 >
-                  {[
-                    'Follow-up audit scheduled for Friday',
-                    'Agent notification sent',
-                    'Manager note attached',
-                    'Coaching progress will be tracked in the Coaching tab',
-                  ].map((item) => (
-                    <div
-                      key={item}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        marginBottom: 8,
-                        fontSize: 13,
-                      }}
+                  <div style={{ flex: 1, fontSize: 16, fontWeight: 600 }}>
+                    <span
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}
                     >
-                      <CheckCircleFilled style={{ color: '#52c41a', fontSize: 14, flexShrink: 0 }} />
-                      <span style={{ color: 'rgba(0,0,0,0.72)' }}>{item}</span>
-                    </div>
-                  ))}
+                      AI-recommended coaching plan
+                      <span className="vo-ai-chip">
+                        <ThunderboltOutlined /> Rohan Mehta
+                      </span>
+                    </span>
+                  </div>
+                  <CloseBtn />
                 </div>
-                <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-                  <Button>View Coaching Plan</Button>
-                  <Button type="primary">Return to Dashboard</Button>
+
+                {/* Modal body — step=3 success state (no Steps shown, matches CoachingModal) */}
+                <div style={{ padding: '24px' }}>
+                  <div className="vo-success">
+                    <div className="big-icon">
+                      <CheckCircleFilled style={{ color: '#52c41a', fontSize: 48 }} />
+                    </div>
+                    <h3>Coaching plan approved</h3>
+                    <p>{C.success}</p>
+                  </div>
+                </div>
+
+                {/* Modal footer — step=3 buttons */}
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'flex-end',
+                    gap: 8,
+                    padding: '0 24px 16px',
+                  }}
+                >
+                  <Button>View coaching plan</Button>
+                  <Button type="primary">Done</Button>
                 </div>
               </div>
             </div>
           </div>
-        </StaticLayout>
+        </RealLayout>
       </ScreenFrame>
+      <ScreenAnnotations
+        items={[
+          {
+            label: 'Large checkmark — the job is done',
+            text: 'The success state uses a 48px green CheckCircleFilled icon at the centre. The visual weight signals completion clearly — there is no ambiguity about whether the action fired.',
+          },
+          {
+            label: 'Confirmation message is specific',
+            text: '"Rohan has been enrolled in Active Listening for Escalated Voice Calls. Follow-up audit scheduled for Friday." — not a generic "success". The supervisor knows exactly what was automated.',
+          },
+          {
+            label: 'Two CTAs — review or move on',
+            text: '"View coaching plan" lets supervisors inspect what was created. "Done" takes them back to the dashboard immediately so they can move on to the next intervention.',
+          },
+        ]}
+      />
     </CsSection>
   );
 }
 
-// ─── Section 7: AI Natural Language Query ────────────────────────────────────
+// ─── Section 6 — Natural Language AI Query ───────────────────────────────────
 
 function Sec7AIQuery() {
   const A = VO_ASSISTANT;
@@ -1244,21 +1158,22 @@ function Sec7AIQuery() {
       title: 'Agent',
       dataIndex: 'agent',
       key: 'agent',
+      width: 150,
       render: (a: string) => <b style={{ fontWeight: 500 }}>{a}</b>,
     },
     {
       title: 'Failed calls',
       dataIndex: 'failed',
       key: 'failed',
-      align: 'right',
       width: 110,
+      align: 'right',
     },
     { title: 'Common mistake', dataIndex: 'mistake', key: 'mistake' },
     {
       title: 'Latest failed call',
       dataIndex: 'call',
       key: 'call',
-      width: 148,
+      width: 150,
       render: (c: string) => (
         <span style={{ color: '#1677ff', fontWeight: 500 }}>{c}</span>
       ),
@@ -1267,7 +1182,7 @@ function Sec7AIQuery() {
       title: 'Suggested action',
       dataIndex: 'action',
       key: 'action',
-      width: 175,
+      width: 180,
       render: (a: string) => (
         <Tag color={a === 'Monitor' ? 'blue' : a === 'QA review' ? 'gold' : 'volcano'}>
           {a}
@@ -1278,182 +1193,267 @@ function Sec7AIQuery() {
 
   return (
     <CsSection
-      num="7"
-      title="Natural Language Interaction"
-      annotation="Supervisors can ask complex operational questions in natural language and receive a visual answer with charts, tables, and recommended actions."
+      num="6"
+      title="Natural Language AI Query"
+      annotation="Supervisors can ask complex operational questions in plain language and receive visual answers with charts, tables, and recommended actions — triggered via the ⌘K command bar."
     >
-      <ScreenFrame label="Natural Language Query Result State">
-        <StaticLayout active="overview" crumb="Overview · AI Query">
-          <div style={{ padding: '28px 32px 32px', background: '#f5f7fa' }}>
+      <ScreenFrame label="Ask AI Panel — Query Result">
+        <RealLayout page="overview">
+          <div style={{ position: 'relative', overflow: 'hidden' }}>
+
+            {/* Background: dimmed dashboard (same content visible behind the mask) */}
+            <div style={{ opacity: 0.25, pointerEvents: 'none' }}>
+              <DashboardScreen onOpenAgent={() => {}} onAction={() => {}} />
+            </div>
+
+            {/*
+              Dark overlay — matches .vo-assistant-mask visual exactly,
+              but uses position:absolute so it's contained in the case study frame
+              rather than covering the whole viewport.
+            */}
             <div
               style={{
-                background: '#fff',
-                borderRadius: 16,
-                border: '1px solid #e2e5ea',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.09)',
-                overflow: 'hidden',
+                position: 'absolute',
+                inset: 0,
+                background: 'rgba(0,21,41,0.45)',
+                zIndex: 1,
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'flex-start',
+                padding: '24px',
               }}
             >
-              {/* Query bar */}
+              {/*
+                .vo-assistant panel — uses the exact same CSS class as AskAIPanel.
+                Override max-height so all content is visible in the static case study.
+              */}
               <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  padding: '16px 24px',
-                  borderBottom: '1px solid #f0f0f0',
-                }}
+                className="vo-assistant"
+                style={{ maxHeight: 'none', position: 'relative' }}
               >
-                <ThunderboltOutlined style={{ color: '#1d39c4', fontSize: 18, flexShrink: 0 }} />
-                <span style={{ flex: 1, fontSize: 16, fontWeight: 500, color: 'rgba(0,0,0,0.85)' }}>
-                  {A.query}
-                </span>
-                <Button type="primary" icon={<SendOutlined />}>Ask</Button>
-              </div>
-
-              {/* Response */}
-              <div style={{ padding: '20px 24px 28px' }}>
-                {/* User bubble */}
-                <div className="vo-user-q">
-                  <Avatar size={28} style={{ background: '#13c2c2', flexShrink: 0 }}>S</Avatar>
-                  <span className="bubble">{A.query}</span>
-                </div>
-
-                {/* AI label */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                  <span className="vo-ai-chip">
-                    <ThunderboltOutlined /> AI answer
-                  </span>
-                  <span style={{ fontSize: 13, color: 'rgba(0,0,0,0.45)' }}>
-                    Analyzed 142 audited calls since policy update (Jun 2)
-                  </span>
-                </div>
-
-                <h3
-                  style={{
-                    fontSize: 18,
-                    fontWeight: 700,
-                    margin: '8px 0 6px',
-                    letterSpacing: '-0.2px',
-                  }}
-                >
-                  {A.responseTitle}
-                </h3>
-                <p
-                  style={{
-                    fontSize: 14,
-                    color: 'rgba(0,0,0,0.55)',
-                    lineHeight: 1.6,
-                    margin: '0 0 18px',
-                    maxWidth: 780,
-                  }}
-                >
-                  {A.summary}
-                </p>
-
-                {/* Mini bar chart */}
-                <div
-                  style={{
-                    background: '#fff',
-                    border: '1px solid #f0f0f0',
-                    borderRadius: 12,
-                    padding: '16px 20px',
-                    marginBottom: 16,
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-                  }}
-                >
-                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>
-                    Failed escalation-policy calls per agent
-                  </div>
-                  {A.bars.map((b) => (
-                    <div className="vo-bar-row" key={b.name}>
-                      <span style={{ fontWeight: 500, whiteSpace: 'nowrap' }}>{b.name}</span>
-                      <span className="vo-bar-rail">
-                        <span
-                          className="vo-bar-fill"
-                          style={{ width: `${(b.value / maxBar) * 100}%` }}
-                        />
-                      </span>
-                      <span className="vo-bar-val">{b.value} calls</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Table */}
-                <div
-                  style={{
-                    background: '#fff',
-                    border: '1px solid #f0f0f0',
-                    borderRadius: 12,
-                    overflow: 'hidden',
-                    marginBottom: 16,
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-                  }}
-                >
-                  <Table<AssistantRow>
-                    rowKey="agent"
-                    size="small"
-                    pagination={false}
-                    columns={assistantCols}
-                    dataSource={A.rows}
+                {/* Input bar — exact same as .vo-assistant-input in AskAIPanel */}
+                <div className="vo-assistant-input">
+                  <ThunderboltOutlined
+                    style={{ color: '#1d39c4', fontSize: 18, flexShrink: 0 }}
                   />
+                  <input
+                    defaultValue={A.query}
+                    readOnly
+                    aria-label="Ask about your team"
+                    placeholder="Ask about your team — agents, audits, policies, coaching…"
+                  />
+                  <Button type="primary" icon={<SendOutlined />}>
+                    Ask
+                  </Button>
+                  <button
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 6,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'default',
+                      border: 0,
+                      background: 'none',
+                      color: 'var(--ad-color-text-secondary)',
+                      fontSize: 14,
+                    }}
+                    aria-label="Close assistant"
+                  >
+                    <CloseOutlined />
+                  </button>
                 </div>
 
-                {/* Suggested action */}
-                <div className="vo-suggest">
-                  <ReadOutlined style={{ fontSize: 18, color: '#1d39c4', flexShrink: 0 }} />
-                  <span className="txt">{A.suggestion}</span>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <Button type="primary">Approve bulk enrollment</Button>
-                    <Button>View call evidence</Button>
-                    <Button icon={<ExportOutlined />}>Export findings</Button>
+                {/* Response body — exact same as .vo-assistant-body in AskAIPanel */}
+                <div className="vo-assistant-body" style={{ overflowY: 'visible' }}>
+                  {/* User bubble */}
+                  <div className="vo-user-q">
+                    <Avatar size={28} style={{ background: '#13c2c2', flexShrink: 0 }}>
+                      S
+                    </Avatar>
+                    <span className="bubble">{A.query}</span>
+                  </div>
+
+                  {/* AI chip + analysis note */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      marginBottom: 4,
+                    }}
+                  >
+                    <span className="vo-ai-chip">
+                      <ThunderboltOutlined /> AI answer
+                    </span>
+                    <span style={{ fontSize: 13, color: 'var(--ad-color-text-secondary)' }}>
+                      Analyzed 142 audited calls since policy update (Jun 2)
+                    </span>
+                  </div>
+
+                  {/* Title + summary */}
+                  <h3
+                    style={{
+                      fontSize: 18,
+                      fontWeight: 600,
+                      margin: '8px 0 6px',
+                      letterSpacing: '-0.2px',
+                    }}
+                  >
+                    {A.responseTitle}
+                  </h3>
+                  <p
+                    style={{
+                      fontSize: 14,
+                      color: 'var(--ad-color-text-secondary)',
+                      lineHeight: 1.6,
+                      margin: '0 0 18px',
+                      maxWidth: 720,
+                    }}
+                  >
+                    {A.summary}
+                  </p>
+
+                  {/* Mini bar chart */}
+                  <div
+                    style={{
+                      background: '#fff',
+                      border: '1px solid #f0f0f0',
+                      borderRadius: 12,
+                      padding: '16px 20px',
+                      marginBottom: 16,
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                    }}
+                  >
+                    <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>
+                      Failed escalation-policy calls per agent
+                    </div>
+                    {A.bars.map((b) => (
+                      <div className="vo-bar-row" key={b.name}>
+                        <span
+                          style={{
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            fontWeight: 500,
+                          }}
+                        >
+                          {b.name}
+                        </span>
+                        <span className="vo-bar-rail">
+                          <span
+                            className="vo-bar-fill"
+                            style={{ width: `${(b.value / maxBar) * 100}%` }}
+                          />
+                        </span>
+                        <span className="vo-bar-val">{b.value} calls</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Filtered table */}
+                  <div
+                    style={{
+                      background: '#fff',
+                      border: '1px solid #f0f0f0',
+                      borderRadius: 12,
+                      overflow: 'hidden',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                    }}
+                  >
+                    <Table<AssistantRow>
+                      rowKey="agent"
+                      size="small"
+                      pagination={false}
+                      columns={assistantCols}
+                      dataSource={A.rows}
+                      scroll={{ x: 700 }}
+                    />
+                  </div>
+
+                  {/* Suggested action */}
+                  <div className="vo-suggest">
+                    <ReadOutlined
+                      style={{ fontSize: 18, color: '#1d39c4', flexShrink: 0 }}
+                    />
+                    <span className="txt">{A.suggestion}</span>
+                    <span style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <Button type="primary">Approve bulk enrollment</Button>
+                      <Button>View call evidence</Button>
+                      <Button icon={<ExportOutlined />}>Export findings</Button>
+                    </span>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        </StaticLayout>
+        </RealLayout>
       </ScreenFrame>
+      <ScreenAnnotations
+        items={[
+          {
+            label: '⌘K triggers the panel from anywhere',
+            text: 'The command bar in the header is always visible. Supervisors never have to navigate to a separate "AI" page — one keyboard shortcut opens the query panel over whatever they are viewing.',
+          },
+          {
+            label: 'Query appears as a chat bubble',
+            text: 'The user question is shown as an avatar + bubble above the AI response. The familiar chat metaphor lowers the learning curve — supervisors interact with it the same way they\'d use a search bar.',
+          },
+          {
+            label: 'Bar chart gives instant visual ranking',
+            text: 'Before the table, a horizontal bar chart shows which agents have the most escalation-policy failures. Visual comparison is faster than scanning numbers in a table column.',
+          },
+          {
+            label: 'Table pre-filtered to the query subject',
+            text: 'The table shows only the 4 agents relevant to the question — not the full 8-agent roster. The AI applies the filter; the supervisor gets a focused answer, not a raw data dump.',
+          },
+          {
+            label: 'Bulk action card converts insight to action',
+            text: '"Approve bulk enrollment" is one click away from the answer. The AI doesn\'t just answer the question — it surfaces the logical next action and lets the supervisor approve it immediately.',
+          },
+        ]}
+      />
     </CsSection>
   );
 }
 
-// ─── Section 8: Design Rationale ─────────────────────────────────────────────
+// ─── Section 7 — Design Rationale ────────────────────────────────────────────
 
 function Sec8Rationale() {
   const CARDS = [
     {
       title: 'From Monitoring to Action',
-      text: 'The dashboard prioritizes AI-ranked interventions above raw metrics so supervisors can quickly decide where to focus.',
+      text: 'The dashboard prioritizes AI-ranked interventions above raw metrics so supervisors can quickly decide where to focus today.',
       icon: <ThunderboltOutlined style={{ color: '#1677ff', fontSize: 22 }} />,
       bg: '#e6f4ff',
       border: '#bae0ff',
     },
     {
       title: 'Explainable AI',
-      text: 'Low audit scores are supported with transcript evidence, policy references, confidence levels, and QA review actions.',
-      icon: <EyeOutlined style={{ color: '#0891b2', fontSize: 22 }} />,
+      text: 'Every low audit score is supported with transcript evidence, policy references, AI confidence levels, and QA review actions.',
+      icon: <SearchOutlined style={{ color: '#0891b2', fontSize: 22 }} />,
       bg: '#ecfeff',
       border: '#a5f3fc',
     },
     {
       title: 'Coaching Automation',
-      text: 'The system recommends training modules based on repeated audit failure patterns and allows supervisor approval before automation.',
+      text: 'The system recommends training modules based on repeated failure patterns and allows supervisor approval before any automation runs.',
       icon: <SolutionOutlined style={{ color: '#7c3aed', fontSize: 22 }} />,
       bg: '#f5f3ff',
       border: '#ddd6fe',
     },
     {
-      title: 'Natural Language Exploration',
+      title: 'Natural Language',
       text: 'Supervisors can ask complex team-performance questions and receive visual, actionable answers instead of plain text responses.',
-      icon: <SearchOutlined style={{ color: '#0d9488', fontSize: 22 }} />,
+      icon: <RiseOutlined style={{ color: '#0d9488', fontSize: 22 }} />,
       bg: '#f0fdf4',
       border: '#bbf7d0',
     },
   ];
 
   return (
-    <CsSection num="8" title="Design Rationale">
+    <CsSection num="7" title="Design Rationale">
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 20 }}>
         {CARDS.map((c) => (
           <div
@@ -1481,7 +1481,14 @@ function Sec8Rationale() {
             >
               {c.icon}
             </div>
-            <h4 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 10px', color: '#0a0a14' }}>
+            <h4
+              style={{
+                fontSize: 16,
+                fontWeight: 700,
+                margin: '0 0 10px',
+                color: '#0a0a14',
+              }}
+            >
               {c.title}
             </h4>
             <p style={{ fontSize: 14, color: '#6b7280', lineHeight: 1.65, margin: 0 }}>
@@ -1494,56 +1501,54 @@ function Sec8Rationale() {
   );
 }
 
-// ─── Section 9: Requirement Mapping ──────────────────────────────────────────
+// ─── Section 9 — Requirement Mapping ─────────────────────────────────────────
 
 function Sec9Requirements() {
   const ROWS = [
     {
       req: 'Supervisor Dashboard Main Screen',
       solution:
-        'Designed as the main team performance dashboard with AI insights, KPIs, trends, and agent table.',
+        'Designed as the main team performance dashboard with AI insights, KPIs, trend chart, and agent table.',
     },
     {
       req: 'Agent Performance Drilldown Screen',
       solution:
-        "Designed as Rohan Mehta's detailed performance view with audit breakdown, strengths, weaknesses, trends, and recent calls.",
+        "Designed as Rohan Mehta's detailed performance view with audit breakdown, strengths/weaknesses, trend chart, and recent calls.",
     },
     {
       req: 'Proactive AI Insights',
       solution:
-        "Designed as Today's Priority Interventions with top 3 urgent AI-ranked actions.",
+        "Designed as Today's Priority Interventions — top 3 urgent AI-ranked actions with severity, impact, and action buttons.",
     },
     {
       req: 'Explainable AI',
       solution:
-        'Designed as an evidence drawer with transcript snippets, AI flags, policy reasoning, and confidence score.',
+        'Designed as an evidence drawer with highlighted transcript snippets, AI flags, policy reasoning, and confidence score.',
     },
     {
-      req: 'Agentic Steering / Closed-Loop Action',
+      req: 'Agentic Coaching / Closed-Loop Action',
       solution:
-        'Designed as AI-recommended coaching approval flow with automatic enrollment and follow-up audit.',
+        'Designed as a 3-step AI-recommended coaching approval modal with auto-enrollment, follow-up audit scheduling, and agent notification.',
     },
     {
       req: 'Natural Language Interaction',
       solution:
-        'Designed as an AI query result with bar chart, filtered table, and recommended bulk action.',
+        'Designed as an AI query panel (⌘K) with bar chart, filtered table, and recommended bulk action.',
     },
     {
       req: 'Ant Design System',
       solution:
-        'Used Ant Design layout, cards, tables, tags, buttons, modals, drawers, filters, and Recharts for charts.',
+        'Used Ant Design layout, cards, tables, tags, buttons, modals, drawers, steps, checkboxes, and Recharts for trend charts.',
     },
   ];
 
   const cols: ColumnsType<(typeof ROWS)[0]> = [
     {
-      title: 'Assignment Requirement',
+      title: 'Requirement',
       dataIndex: 'req',
       key: 'req',
       width: '34%',
-      render: (r: string) => (
-        <span style={{ fontWeight: 600, fontSize: 14 }}>{r}</span>
-      ),
+      render: (r: string) => <span style={{ fontWeight: 600, fontSize: 14 }}>{r}</span>,
     },
     {
       title: 'Designed Solution',
@@ -1566,18 +1571,20 @@ function Sec9Requirements() {
   ];
 
   return (
-    <CsSection num="9" title="Requirement Mapping">
-      <div
-        style={{
-          background: '#fff',
-          borderRadius: 12,
-          border: '1px solid #e2e5ea',
-          overflow: 'hidden',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-        }}
-      >
-        <Table rowKey="req" columns={cols} dataSource={ROWS} pagination={false} />
-      </div>
+    <CsSection num="8" title="Requirement Mapping">
+      <ConfigProvider theme={THEME}>
+        <div
+          style={{
+            background: '#fff',
+            borderRadius: 12,
+            border: '1px solid #e2e5ea',
+            overflow: 'hidden',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+          }}
+        >
+          <Table rowKey="req" columns={cols} dataSource={ROWS} pagination={false} />
+        </div>
+      </ConfigProvider>
     </CsSection>
   );
 }
@@ -1586,13 +1593,7 @@ function Sec9Requirements() {
 
 function Footer() {
   return (
-    <div
-      style={{
-        background: '#0a0a14',
-        padding: '48px',
-        textAlign: 'center',
-      }}
-    >
+    <div style={{ background: '#0a0a14', padding: '48px', textAlign: 'center' }}>
       <div
         style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 14 }}
       >
@@ -1600,13 +1601,14 @@ function Footer() {
         <span style={{ color: '#fff', fontWeight: 700, fontSize: 18 }}>VoiceOps AI</span>
       </div>
       <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, margin: 0 }}>
-        Product Design Case Study · High-fidelity prototype · React 18, TypeScript, Ant Design 5
+        Product Design Case Study · High-fidelity prototype · React 18 + TypeScript +
+        Ant Design v5
       </p>
     </div>
   );
 }
 
-// ─── Main export ─────────────────────────────────────────────────────────────
+// ─── Page entry point ─────────────────────────────────────────────────────────
 
 export function CaseStudyPage() {
   return (
@@ -1620,7 +1622,6 @@ export function CaseStudyPage() {
     >
       <Cover />
       <Sec1Dashboard />
-      <Sec2Insights />
       <Sec3Drilldown />
       <Sec4Evidence />
       <Sec5Coaching />
