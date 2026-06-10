@@ -5,7 +5,9 @@ import { CaseStudyPage } from './pages/CaseStudyPage';
 import 'antd/dist/reset.css';
 import './styles/globals.css';
 
-const isCaseStudy = window.location.pathname === '/case-study';
+const isCaseStudy =
+  import.meta.env.VITE_CASE_STUDY_ONLY === 'true' ||
+  window.location.pathname === '/case-study';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
